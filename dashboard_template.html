@@ -554,9 +554,12 @@ if (SOCIAL_HISTORY.length > 0) {
   const igRows = Object.entries(sLatest.instagram || {}).map(([name, data]) => {
     if (data.error) return `<div class="social-row"><div class="social-platform"><span class="social-badge ig">IG</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div>`;
     const prevData = sPrev && sPrev.instagram ? sPrev.instagram[name] : null;
+    const engagementLine = data.avg_likes !== undefined
+      ? `<div class="social-note">최근 ${data.recent_posts_sampled}개 평균 좋아요 ${fmtNum(data.avg_likes)}·댓글 ${fmtNum(data.avg_comments)} · 게시물 ${fmtNum(data.media_count || 0)}개</div>`
+      : '';
     return `<div class="social-row">
       <div class="social-platform"><span class="social-badge ig">IG</span><span class="p-name">${name} (@${data.username || '-'})</span></div>
-      <div style="text-align:right"><div class="social-value">${fmtNum(data.followers_count || 0)}명</div>${followerDelta(data.followers_count, prevData ? prevData.followers_count : undefined)}</div>
+      <div style="text-align:right"><div class="social-value">${fmtNum(data.followers_count || 0)}명</div>${followerDelta(data.followers_count, prevData ? prevData.followers_count : undefined)}${engagementLine}</div>
     </div>`;
   }).join('');
 

@@ -67,7 +67,23 @@ def fetch_instagram(cfg, token):
     host = cfg["host"]
     obj_id = cfg.get("object_id", "me")
     url = f"https://{host}/v20.0/{obj_id}?fields=username,followers_count,media_count&access_token=" + urllib.parse.quote(token)
-    return http_get(url)
+    data = http_get(url)
+    if "error" in data:
+        return data
+
+    media_url = (
+        f"https://{host}/v20.0/{obj_id}/media?fields=like_count,comments_count,timestamp&limit=3&access_token="
+        + urllib.parse.quote(token)
+    )
+    media = http_get(media_url)
+    recent = media.get("data", [])
+    if recent:
+        data["recent_posts_sampled"] = len(recent)
+        data["avg_likes"] = round(sum(m.get("like_count", 0) for m in recent) / len(recent), 1)
+        data["avg_comments"] = round(sum(m.get("comments_count", 0) for m in recent) / len(recent), 1)
+        data["latest_post_likes"] = recent[0].get("like_count")
+        data["latest_post_comments"] = recent[0].get("comments_count")
+    return data
 
 
 def fetch_facebook_pages(pages, token):
