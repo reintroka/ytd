@@ -351,9 +351,8 @@
   </section>
 
   <footer>
-    데이터 출처: YouTube Data API v3(공개 데이터) · 롱폼/숏폼 구분 기준: 영상 길이 183초 · 평균은 최근 확인 시점 기준 최대 6개 영상 · 조회수는 실시간이 아니며 API 조회 시점 기준입니다.<br>
-    참고: 대부분 채널은 3일 주기로 숏폼 2개(1·2일차) 발행 후 그 숏폼들을 편집한 리캡 롱폼 1개(3일차)가 나가는 구조입니다 — 롱폼은 숏폼과 경쟁하는 별개 콘텐츠가 아니라 파생 재편집물이라 두 지표는 우열이 아니라 각자 따로 참고하는 용도입니다. 또한 발행 빈도가 달라(숏폼은 매일, 롱폼은 3일마다) "최근 6개" 평균이 가리키는 기간도 롱폼 쪽이 약 3배 더 깁니다.<br>
-    이 페이지는 매일 자동 갱신됩니다(클라우드 라우틴 + GCS 정적 호스팅). 본인 구글 계정으로 로그인해야 열람 가능합니다.
+    데이터 출처: YouTube Data API v3(공개 데이터, <code>yt-stats-tracker</code> 프로젝트) · 롱폼/숏폼 구분 기준: 영상 길이 183초 · 평균은 최근 확인 시점 기준 최대 6개 영상 · 조회수는 실시간이 아니며 API 조회 시점 기준입니다.<br>
+    참고: 대부분 채널은 3일 주기로 숏폼 2개(1·2일차) 발행 후 그 숏폼들을 편집한 리캡 롱폼 1개(3일차)가 나가는 구조입니다 — 롱폼은 숏폼과 경쟁하는 별개 콘텐츠가 아니라 파생 재편집물이라 두 지표는 우열이 아니라 각자 따로 참고하는 용도입니다. 또한 발행 빈도가 달라(숏폼은 매일, 롱폼은 3일마다) "최근 6개" 평균이 가리키는 기간도 롱폼 쪽이 약 3배 더 깁니다.
   </footer>
 </div>
 
@@ -405,7 +404,7 @@ document.getElementById('subTotal').textContent = fmtNum(channels.reduce((s, c) 
 // ---- baseline / trend note ----
 const noteEl = document.getElementById('baselineNoteText');
 if (!PREV) {
-  noteEl.innerHTML = '이번이 <b>첫 스냅샷</b>입니다 — 성장 추이(증감률)는 다음 조회부터 표시됩니다. 지금은 현재 상태(구독자·최근 영상 조회수)만 보여줍니다.';
+  noteEl.innerHTML = '이번이 <b>첫 스냅샷</b>입니다 — 성장 추이(증감률)는 다음 조회부터 표시됩니다. 지금은 현재 상태(구독자·최근 영상 조회수)만 보여줍니다. <code>track_views.py</code>를 다시 실행하면 새 스냅샷이 쌓입니다.';
 } else {
   const prevTime = fmtDate(PREV.timestamp);
   noteEl.innerHTML = `총 <b>${HISTORY.length}개</b> 스냅샷 누적됨 — 지난 확인(${prevTime}) 대비 증감을 각 채널 카드에서 확인하세요.`;
@@ -451,6 +450,7 @@ document.getElementById('rankChart').innerHTML = rankHtml +
 function sparkline(values) {
   const w = 64, h = 24, pad = 2;
   if (values.length < 2) {
+    // 점 하나뿐 - 향후 스냅샷이 쌓이면 자동으로 선이 됨
     return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
       <circle cx="${w/2}" cy="${h/2}" r="3" fill="var(--series-shorts)"></circle>
     </svg>`;
@@ -582,8 +582,13 @@ if (REVENUE_HISTORY.length > 0) {
   const rLatest = REVENUE_HISTORY[REVENUE_HISTORY.length - 1];
   const rPrev = REVENUE_HISTORY.length >= 2 ? REVENUE_HISTORY[REVENUE_HISTORY.length - 2] : null;
 
+  const USD_KRW_RATE = 1450; // 참고용 근사 환율 - 실시간 조회 아님
+
   function fmtUsd(n) {
     return '$' + (n || 0).toFixed(2);
+  }
+  function fmtKrw(usd) {
+    return '₩' + fmtNum((usd || 0) * USD_KRW_RATE);
   }
   function usdDelta(curr, prevVal) {
     if (prevVal === undefined || prevVal === null) return '';
@@ -599,17 +604,17 @@ if (REVENUE_HISTORY.length > 0) {
       <div class="ch-name" style="margin-bottom:2px">오늘의 심리학</div>
       <div class="social-row">
         <div class="social-platform"><span class="social-badge rev">$</span><span class="p-name">총수익 (${rLatest.period_start}~${rLatest.period_end})</span></div>
-        <div style="text-align:right"><div class="social-value">${fmtUsd(rLatest.total_revenue)}</div>${usdDelta(rLatest.total_revenue, rPrev ? rPrev.total_revenue : undefined)}</div>
+        <div style="text-align:right"><div class="social-value">${fmtUsd(rLatest.total_revenue)}</div><div class="social-note">${fmtKrw(rLatest.total_revenue)}</div>${usdDelta(rLatest.total_revenue, rPrev ? rPrev.total_revenue : undefined)}</div>
       </div>
       <div class="social-row">
         <div class="social-platform"><span class="social-badge rev">Ad</span><span class="p-name">광고 수익</span></div>
-        <div style="text-align:right"><div class="social-value">${fmtUsd(rLatest.total_ad_revenue)}</div>${usdDelta(rLatest.total_ad_revenue, rPrev ? rPrev.total_ad_revenue : undefined)}</div>
+        <div style="text-align:right"><div class="social-value">${fmtUsd(rLatest.total_ad_revenue)}</div><div class="social-note">${fmtKrw(rLatest.total_ad_revenue)}</div>${usdDelta(rLatest.total_ad_revenue, rPrev ? rPrev.total_ad_revenue : undefined)}</div>
       </div>
       <div class="social-row">
         <div class="social-platform"><span class="p-name">조회수(수익기간)</span></div>
         <div style="text-align:right"><div class="social-value">${fmtNum(rLatest.total_views)}회</div></div>
       </div>
-      <div class="social-note">확인일: ${rLatest.checked_at}</div>
+      <div class="social-note">확인일: ${rLatest.checked_at} · 환율 ₩${USD_KRW_RATE}/$ 근사치</div>
     </div></div>
   `;
   document.getElementById('revenueSection').hidden = false;
