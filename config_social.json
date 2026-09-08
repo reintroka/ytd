@@ -1,0 +1,12 @@
+{
+  "instagram": {
+    "명리마스터": { "host": "graph.facebook.com", "object_id": "17841478705752942" },
+    "쇼핑의 천국": { "host": "graph.facebook.com", "object_id": "17841435917727208" },
+    "코어디웹": { "host": "graph.facebook.com", "object_id": "17841434095828394" }
+  },
+  "facebook_pages": {
+    "쇼핑의 천국": "1314409945088774",
+    "코어디웹": "1123875990812103",
+    "명리마스터": "1181971408324335"
+  }
+}

@@ -1,0 +1,617 @@
+<title>채널 플릿 대시보드</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@700;800;900&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --page-plane:      #f9f9f7;
+    --surface-1:       #fcfcfb;
+    --surface-2:       #ffffff;
+    --text-primary:    #0b0b0b;
+    --text-secondary:  #52514e;
+    --text-muted:      #898781;
+    --gridline:        #e1e0d9;
+    --baseline:        #c3c2b7;
+    --border:          rgba(11,11,11,0.10);
+    --border-strong:   rgba(11,11,11,0.16);
+    --series-shorts:   #2a78d6;
+    --series-shorts-bg:#eaf2fc;
+    --series-longform: #eb6834;
+    --series-longform-bg:#fdece3;
+    --status-good:     #0ca30c;
+    --status-warning:  #fab219;
+    --status-critical: #d03b3b;
+    --shadow-card: 0 1px 2px rgba(11,11,11,0.04), 0 1px 1px rgba(11,11,11,0.03);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page-plane:      #0d0d0d;
+      --surface-1:       #1a1a19;
+      --surface-2:       #212120;
+      --text-primary:    #ffffff;
+      --text-secondary:  #c3c2b7;
+      --text-muted:      #898781;
+      --gridline:        #2c2c2a;
+      --baseline:        #383835;
+      --border:          rgba(255,255,255,0.10);
+      --border-strong:   rgba(255,255,255,0.16);
+      --series-shorts:   #3987e5;
+      --series-shorts-bg:#16283f;
+      --series-longform: #d95926;
+      --series-longform-bg:#3a2013;
+      --status-good:     #0ca30c;
+      --status-warning:  #fab219;
+      --status-critical: #e66767;
+      --shadow-card: 0 1px 2px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page-plane:      #0d0d0d;
+    --surface-1:       #1a1a19;
+    --surface-2:       #212120;
+    --text-primary:    #ffffff;
+    --text-secondary:  #c3c2b7;
+    --text-muted:      #898781;
+    --gridline:        #2c2c2a;
+    --baseline:        #383835;
+    --border:          rgba(255,255,255,0.10);
+    --border-strong:   rgba(255,255,255,0.16);
+    --series-shorts:   #3987e5;
+    --series-shorts-bg:#16283f;
+    --series-longform: #d95926;
+    --series-longform-bg:#3a2013;
+    --status-good:     #0ca30c;
+    --status-warning:  #fab219;
+    --status-critical: #e66767;
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .masthead { display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px; }
+  .eyebrow {
+    font-family: "Gothic A1", sans-serif;
+    font-weight: 800;
+    font-size: 12.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--series-shorts);
+  }
+  h1 {
+    font-family: "Gothic A1", sans-serif;
+    font-weight: 900;
+    font-size: clamp(28px, 4vw, 38px);
+    line-height: 1.15;
+    margin: 2px 0 0;
+    text-wrap: balance;
+  }
+  .meta-line {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+  }
+  .meta-line b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+  .baseline-note {
+    margin-top: 18px;
+    padding: 12px 16px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 13.5px;
+    color: var(--text-secondary);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .baseline-note .dot {
+    flex: none;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--status-warning);
+    margin-top: 5px;
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin: 28px 0 36px;
+  }
+  .stat-tile {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow-card);
+  }
+  .stat-tile .label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .stat-tile .value {
+    font-family: "Gothic A1", sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-tile .sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  section.block { margin-bottom: 44px; }
+  .block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  h2 {
+    font-family: "Gothic A1", sans-serif;
+    font-weight: 800;
+    font-size: 19px;
+    margin: 0;
+  }
+  .block-sub { font-size: 13px; color: var(--text-muted); }
+
+  .legend { display: flex; gap: 18px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend .swatch { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ranking chart */
+  .rank-chart { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px 12px; box-shadow: var(--shadow-card); overflow-x: auto; }
+  .rank-row { display: grid; grid-template-columns: 132px 1fr 64px; align-items: center; gap: 10px; height: 30px; }
+  .rank-row + .rank-row { margin-top: 6px; }
+  .rank-name { font-size: 13px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rank-track { position: relative; height: 16px; background: transparent; }
+  .rank-bar { position: absolute; left: 0; top: 0; height: 100%; border-radius: 0 4px 4px 0; background: var(--series-shorts); }
+  .rank-bar.is-top { background: linear-gradient(90deg, var(--series-shorts), var(--series-shorts)); }
+  .rank-value { font-size: 12.5px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+  .rank-axis { display: grid; grid-template-columns: 132px 1fr 64px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--gridline); }
+  .rank-axis-ticks { position: relative; height: 14px; }
+  .rank-axis-ticks span { position: absolute; top: 0; font-size: 11px; color: var(--text-muted); transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+  .rank-axis-ticks span:first-child { transform: translateX(0); }
+
+  /* channel cards */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: 14px; }
+  .ch-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px 14px;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .ch-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .ch-name { font-family: "Gothic A1", sans-serif; font-weight: 700; font-size: 15.5px; line-height: 1.3; }
+  .ch-subs { font-size: 12px; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .subs-delta { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .subs-delta.up { color: var(--status-good); }
+  .subs-delta.down { color: var(--status-critical); }
+  .subs-delta.flat { color: var(--text-muted); font-weight: 500; }
+  .ch-rank-badge {
+    flex: none;
+    font-size: 11px; font-weight: 700;
+    color: var(--text-muted);
+    background: var(--page-plane);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 2px 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-row { display: flex; flex-direction: column; gap: 7px; }
+  .metric { display: grid; grid-template-columns: 46px 1fr 48px; align-items: center; gap: 8px; }
+  .metric .m-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; }
+  .metric.is-short .m-label { color: var(--series-shorts); }
+  .metric.is-long .m-label { color: var(--series-longform); }
+  .metric .m-track { height: 8px; border-radius: 4px; background: var(--page-plane); position: relative; overflow: hidden; }
+  .metric .m-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 4px; }
+  .metric.is-short .m-fill { background: var(--series-shorts); }
+  .metric.is-long .m-fill { background: var(--series-longform); }
+  .metric .m-value { font-size: 12.5px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .ch-footline {
+    margin-top: 2px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--gridline);
+    font-size: 11.5px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .social-card-body { display: flex; flex-direction: column; gap: 10px; }
+  .social-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .social-platform { display: flex; align-items: center; gap: 8px; }
+  .social-badge {
+    font-size: 10.5px; font-weight: 700; padding: 3px 7px; border-radius: 5px;
+    color: var(--surface-2);
+  }
+  .social-badge.ig { background: linear-gradient(135deg, #d6336c, #f77737); }
+  .social-badge.fb { background: #1877f2; }
+  .social-badge.rev { background: var(--status-good); }
+  .social-platform .p-name { font-size: 12.5px; color: var(--text-secondary); }
+  .social-value { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .social-note { font-size: 11px; color: var(--text-muted); }
+
+  .ch-trend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 2px;
+  }
+  .ch-trend svg { flex: none; display: block; }
+  .ch-trend .delta {
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .ch-trend .delta.up { color: var(--status-good); }
+  .ch-trend .delta.down { color: var(--status-critical); }
+  .ch-trend .delta.flat { color: var(--text-muted); }
+  .ch-trend .delta-label { font-size: 10.5px; color: var(--text-muted); font-weight: 500; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--gridline);
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+  footer code { background: var(--surface-1); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--border); }
+
+  @media (max-width: 480px) {
+    .rank-row { grid-template-columns: 92px 1fr 50px; }
+    .rank-axis { grid-template-columns: 92px 1fr 50px; }
+    .rank-name { font-size: 11.5px; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="masthead">
+    <div class="eyebrow">Channel Fleet Analytics</div>
+    <h1>채널 플릿 대시보드</h1>
+    <div class="meta-line">
+      <span>스냅샷: <b id="snapTime">-</b></span>
+      <span>·</span>
+      <span>채널 <b id="chCount">-</b>개</span>
+      <span>·</span>
+      <span>구독자 합계 <b id="subTotal">-</b>명</span>
+    </div>
+  </div>
+
+  <div class="baseline-note" id="baselineNote">
+    <span class="dot"></span>
+    <span id="baselineNoteText"></span>
+  </div>
+
+  <div class="stat-row" id="statRow"></div>
+
+  <section class="block">
+    <div class="block-head">
+      <div>
+        <h2>숏폼 평균 조회수 랭킹</h2>
+        <div class="block-sub">최근 숏폼 최대 6개 평균, 채널 순위</div>
+      </div>
+    </div>
+    <div class="rank-chart" id="rankChart"></div>
+  </section>
+
+  <section class="block">
+    <div class="block-head">
+      <div>
+        <h2>채널별 숏폼 vs 롱폼</h2>
+        <div class="block-sub">채널당 최근 영상 최대 6개 기준 평균 조회수</div>
+      </div>
+      <div class="legend">
+        <span class="swatch"><i style="background:var(--series-shorts)"></i>숏폼</span>
+        <span class="swatch"><i style="background:var(--series-longform)"></i>롱폼(리캡)</span>
+      </div>
+    </div>
+    <div class="card-grid" id="cardGrid"></div>
+  </section>
+
+  <section class="block" id="socialSection" hidden>
+    <div class="block-head">
+      <div>
+        <h2>다른 매체</h2>
+        <div class="block-sub">인스타그램 팔로워 · 페이스북 페이지 팔로워</div>
+      </div>
+    </div>
+    <div class="card-grid" id="socialGrid"></div>
+  </section>
+
+  <section class="block" id="revenueSection" hidden>
+    <div class="block-head">
+      <div>
+        <h2>채널 수익 (YouTube Analytics)</h2>
+        <div class="block-sub">최근 28일 합계 · 현재 오늘의 심리학 채널만 수익화 승인</div>
+      </div>
+    </div>
+    <div class="card-grid" id="revenueGrid"></div>
+  </section>
+
+  <footer>
+    데이터 출처: YouTube Data API v3(공개 데이터) · 롱폼/숏폼 구분 기준: 영상 길이 183초 · 평균은 최근 확인 시점 기준 최대 6개 영상 · 조회수는 실시간이 아니며 API 조회 시점 기준입니다.<br>
+    참고: 대부분 채널은 3일 주기로 숏폼 2개(1·2일차) 발행 후 그 숏폼들을 편집한 리캡 롱폼 1개(3일차)가 나가는 구조입니다 — 롱폼은 숏폼과 경쟁하는 별개 콘텐츠가 아니라 파생 재편집물이라 두 지표는 우열이 아니라 각자 따로 참고하는 용도입니다. 또한 발행 빈도가 달라(숏폼은 매일, 롱폼은 3일마다) "최근 6개" 평균이 가리키는 기간도 롱폼 쪽이 약 3배 더 깁니다.<br>
+    이 페이지는 매일 자동 갱신됩니다(클라우드 라우틴 + GCS 정적 호스팅). 본인 구글 계정으로 로그인해야 열람 가능합니다.
+  </footer>
+</div>
+
+<script>
+// HISTORY: 스냅샷 배열(오래된 것 -> 최신 순). 1개뿐이면 베이스라인만, 2개
+// 이상이면 지난 확인 대비 증감 + 스파크라인이 자동으로 표시된다.
+const HISTORY = __DATA_JSON__;
+const LATEST = HISTORY[HISTORY.length - 1];
+const PREV = HISTORY.length >= 2 ? HISTORY[HISTORY.length - 2] : null;
+
+function fmtNum(n) {
+  return new Intl.NumberFormat('ko-KR').format(Math.round(n));
+}
+function avg(arr) {
+  if (!arr || !arr.length) return 0;
+  return arr.reduce((s, v) => s + v.view_count, 0) / arr.length;
+}
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' KST';
+}
+
+function channelsOf(snapshot) {
+  return Object.entries(snapshot.channels).map(([name, c]) => {
+    const shortAvg = avg(c.shorts);
+    const longAvg = avg(c.longform);
+    const subs = parseInt(c.subscriber_count || '0', 10);
+    return { name, subs, shortAvg, longAvg, shorts: c.shorts, longform: c.longform };
+  });
+}
+
+const channels = channelsOf(LATEST);
+const prevByName = {};
+if (PREV) channelsOf(PREV).forEach(c => { prevByName[c.name] = c; });
+
+// 채널별 shortAvg 시계열(스파크라인용) - 이번 채널이 등장하는 스냅샷만 모음
+const seriesByName = {};
+channels.forEach(c => { seriesByName[c.name] = []; });
+HISTORY.forEach(snap => {
+  channelsOf(snap).forEach(c => {
+    if (seriesByName[c.name]) seriesByName[c.name].push(c.shortAvg);
+  });
+});
+
+document.getElementById('snapTime').textContent = fmtDate(LATEST.timestamp);
+document.getElementById('chCount').textContent = channels.length;
+document.getElementById('subTotal').textContent = fmtNum(channels.reduce((s, c) => s + c.subs, 0));
+
+// ---- baseline / trend note ----
+const noteEl = document.getElementById('baselineNoteText');
+if (!PREV) {
+  noteEl.innerHTML = '이번이 <b>첫 스냅샷</b>입니다 — 성장 추이(증감률)는 다음 조회부터 표시됩니다. 지금은 현재 상태(구독자·최근 영상 조회수)만 보여줍니다.';
+} else {
+  const prevTime = fmtDate(PREV.timestamp);
+  noteEl.innerHTML = `총 <b>${HISTORY.length}개</b> 스냅샷 누적됨 — 지난 확인(${prevTime}) 대비 증감을 각 채널 카드에서 확인하세요.`;
+}
+
+// ---- stat tiles ----
+const totalShortAvg = channels.reduce((s, c) => s + c.shortAvg, 0) / channels.length;
+const totalLongAvg = channels.reduce((s, c) => s + c.longAvg, 0) / channels.length;
+const topChannel = [...channels].sort((a, b) => b.shortAvg - a.shortAvg)[0];
+const stats = [
+  { label: '채널 수', value: channels.length, sub: '추적 중' },
+  { label: '구독자 합계', value: fmtNum(channels.reduce((s, c) => s + c.subs, 0)), sub: channels.length + '개 채널 전체' },
+  { label: '평균 숏폼 조회수', value: fmtNum(totalShortAvg), sub: '채널당 최근 6개 평균' },
+  { label: '평균 롱폼 조회수', value: fmtNum(totalLongAvg), sub: '채널당 최근 6개 평균' },
+  { label: '현재 1위 채널', value: topChannel.name, sub: '숏폼 평균 ' + fmtNum(topChannel.shortAvg) + '회' },
+];
+document.getElementById('statRow').innerHTML = stats.map(s =>
+  `<div class="stat-tile"><div class="label">${s.label}</div><div class="value" style="${typeof s.value === 'string' && s.value.length > 6 ? 'font-size:19px' : ''}">${s.value}</div><div class="sub">${s.sub}</div></div>`
+).join('');
+
+// ---- ranking chart ----
+const ranked = [...channels].sort((a, b) => b.shortAvg - a.shortAvg);
+const maxVal = Math.max(...ranked.map(c => c.shortAvg), 1);
+const niceMax = Math.ceil(maxVal / 100) * 100 || 100;
+const rankHtml = ranked.map((c, i) => {
+  const pct = (c.shortAvg / niceMax) * 100;
+  return `<div class="rank-row">
+    <div class="rank-name" title="${c.name}">${i + 1}. ${c.name}</div>
+    <div class="rank-track"><div class="rank-bar${i === 0 ? ' is-top' : ''}" style="width:${pct}%"></div></div>
+    <div class="rank-value">${fmtNum(c.shortAvg)}</div>
+  </div>`;
+}).join('');
+const tickCount = 5;
+const ticksHtml = Array.from({ length: tickCount + 1 }, (_, i) => {
+  const v = Math.round((niceMax / tickCount) * i);
+  const pct = (i / tickCount) * 100;
+  return `<span style="left:${pct}%">${fmtNum(v)}</span>`;
+}).join('');
+document.getElementById('rankChart').innerHTML = rankHtml +
+  `<div class="rank-axis"><div></div><div class="rank-axis-ticks">${ticksHtml}</div><div></div></div>`;
+
+// ---- sparkline (SVG polyline, area fill, emphasized endpoint) ----
+function sparkline(values) {
+  const w = 64, h = 24, pad = 2;
+  if (values.length < 2) {
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+      <circle cx="${w/2}" cy="${h/2}" r="3" fill="var(--series-shorts)"></circle>
+    </svg>`;
+  }
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = (max - min) || 1;
+  const stepX = (w - pad * 2) / (values.length - 1);
+  const pts = values.map((v, i) => {
+    const x = pad + i * stepX;
+    const y = pad + (1 - (v - min) / range) * (h - pad * 2);
+    return [x, y];
+  });
+  const line = pts.map(p => p.join(',')).join(' ');
+  const areaPath = `M${pts[0][0]},${h} ` + pts.map(p => `L${p[0]},${p[1]}`).join(' ') + ` L${pts[pts.length-1][0]},${h} Z`;
+  const last = pts[pts.length - 1];
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <path d="${areaPath}" fill="var(--series-shorts-bg)"></path>
+    <polyline points="${line}" fill="none" stroke="var(--series-shorts)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></polyline>
+    <circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="var(--series-shorts)"></circle>
+  </svg>`;
+}
+
+function subsDeltaHtml(curr, prevVal) {
+  if (prevVal === undefined || prevVal === null) return '';
+  const diff = curr - prevVal;
+  if (diff === 0) return `<span class="subs-delta flat">— 변동 없음</span>`;
+  const cls = diff > 0 ? 'up' : 'down';
+  const arrow = diff > 0 ? '▲' : '▼';
+  return `<span class="subs-delta ${cls}">${arrow} ${fmtNum(Math.abs(diff))}명</span>`;
+}
+
+function deltaBadge(curr, prevVal) {
+  if (prevVal === undefined || prevVal === null) {
+    return `<span class="delta-label">스파크라인은 다음 확인부터 이어집니다</span>`;
+  }
+  const diff = curr - prevVal;
+  const pct = prevVal > 0 ? (diff / prevVal) * 100 : (curr > 0 ? 100 : 0);
+  if (Math.abs(pct) < 1) {
+    return `<span class="delta flat">— 변화 없음</span>`;
+  }
+  const cls = diff > 0 ? 'up' : 'down';
+  const arrow = diff > 0 ? '▲' : '▼';
+  return `<span class="delta ${cls}">${arrow} ${Math.abs(pct).toFixed(0)}%</span> <span class="delta-label">지난 확인 대비</span>`;
+}
+
+// ---- channel cards ----
+const cardMax = Math.max(...channels.map(c => Math.max(c.shortAvg, c.longAvg)), 1);
+const cardHtml = ranked.map((c, i) => {
+  const shortPct = (c.shortAvg / cardMax) * 100;
+  const longPct = (c.longAvg / cardMax) * 100;
+  const latestShort = c.shorts[0];
+  const prevC = prevByName[c.name];
+  return `<div class="ch-card">
+    <div class="ch-card-top">
+      <div>
+        <div class="ch-name">${c.name}</div>
+        <div class="ch-subs">구독자 ${fmtNum(c.subs)}명 ${subsDeltaHtml(c.subs, prevC ? prevC.subs : undefined)}</div>
+      </div>
+      <div class="ch-rank-badge">#${i + 1}</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric is-short">
+        <div class="m-label">숏폼</div>
+        <div class="m-track"><div class="m-fill" style="width:${shortPct}%"></div></div>
+        <div class="m-value">${fmtNum(c.shortAvg)}</div>
+      </div>
+      <div class="metric is-long">
+        <div class="m-label">롱폼</div>
+        <div class="m-track"><div class="m-fill" style="width:${longPct}%"></div></div>
+        <div class="m-value">${fmtNum(c.longAvg)}</div>
+      </div>
+    </div>
+    <div class="ch-trend">
+      ${sparkline(seriesByName[c.name])}
+      ${deltaBadge(c.shortAvg, prevC ? prevC.shortAvg : undefined)}
+    </div>
+    <div class="ch-footline">
+      <span>최신: ${latestShort ? new Date(latestShort.published_at).toLocaleDateString('ko-KR', {timeZone:'Asia/Seoul', month:'numeric', day:'numeric'}) : '-'}</span>
+      <span>숏 ${c.shorts.length}·롱 ${c.longform.length}편 표본</span>
+    </div>
+  </div>`;
+}).join('');
+document.getElementById('cardGrid').innerHTML = cardHtml;
+
+// ---- 다른 매체 (인스타그램 / 페이스북) ----
+const SOCIAL_HISTORY = __SOCIAL_DATA_JSON__;
+if (SOCIAL_HISTORY.length > 0) {
+  const sLatest = SOCIAL_HISTORY[SOCIAL_HISTORY.length - 1];
+  const sPrev = SOCIAL_HISTORY.length >= 2 ? SOCIAL_HISTORY[SOCIAL_HISTORY.length - 2] : null;
+
+  function followerDelta(curr, prevVal) {
+    if (prevVal === undefined || prevVal === null || curr === undefined) return '';
+    const diff = curr - prevVal;
+    if (diff === 0) return `<span class="subs-delta flat">— 변동 없음</span>`;
+    const cls = diff > 0 ? 'up' : 'down';
+    const arrow = diff > 0 ? '▲' : '▼';
+    return `<span class="subs-delta ${cls}">${arrow} ${fmtNum(Math.abs(diff))}명</span>`;
+  }
+
+  const igRows = Object.entries(sLatest.instagram || {}).map(([name, data]) => {
+    if (data.error) return `<div class="social-row"><div class="social-platform"><span class="social-badge ig">IG</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div>`;
+    const prevData = sPrev && sPrev.instagram ? sPrev.instagram[name] : null;
+    return `<div class="social-row">
+      <div class="social-platform"><span class="social-badge ig">IG</span><span class="p-name">${name} (@${data.username || '-'})</span></div>
+      <div style="text-align:right"><div class="social-value">${fmtNum(data.followers_count || 0)}명</div>${followerDelta(data.followers_count, prevData ? prevData.followers_count : undefined)}</div>
+    </div>`;
+  }).join('');
+
+  const fbRows = Object.entries(sLatest.facebook_pages || {}).map(([name, data]) => {
+    if (data.error) return `<div class="social-row"><div class="social-platform"><span class="social-badge fb">FB</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div>`;
+    const prevData = sPrev && sPrev.facebook_pages ? sPrev.facebook_pages[name] : null;
+    return `<div class="social-row">
+      <div class="social-platform"><span class="social-badge fb">FB</span><span class="p-name">${name}</span></div>
+      <div style="text-align:right"><div class="social-value">${fmtNum(data.fan_count || 0)}명</div>${followerDelta(data.fan_count, prevData ? prevData.fan_count : undefined)}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('socialGrid').innerHTML = `
+    <div class="ch-card"><div class="social-card-body"><div class="ch-name" style="margin-bottom:2px">인스타그램</div>${igRows || '<span class="social-note">데이터 없음</span>'}</div></div>
+    <div class="ch-card"><div class="social-card-body"><div class="ch-name" style="margin-bottom:2px">페이스북 페이지</div>${fbRows || '<span class="social-note">데이터 없음</span>'}</div></div>
+  `;
+  document.getElementById('socialSection').hidden = false;
+}
+
+// ---- 채널 수익 (YouTube Analytics) ----
+const REVENUE_HISTORY = __REVENUE_DATA_JSON__;
+if (REVENUE_HISTORY.length > 0) {
+  const rLatest = REVENUE_HISTORY[REVENUE_HISTORY.length - 1];
+  const rPrev = REVENUE_HISTORY.length >= 2 ? REVENUE_HISTORY[REVENUE_HISTORY.length - 2] : null;
+
+  function fmtUsd(n) {
+    return '$' + (n || 0).toFixed(2);
+  }
+  function usdDelta(curr, prevVal) {
+    if (prevVal === undefined || prevVal === null) return '';
+    const diff = curr - prevVal;
+    if (Math.abs(diff) < 0.005) return `<span class="subs-delta flat">— 변동 없음</span>`;
+    const cls = diff > 0 ? 'up' : 'down';
+    const arrow = diff > 0 ? '▲' : '▼';
+    return `<span class="subs-delta ${cls}">${arrow} ${fmtUsd(Math.abs(diff))}</span>`;
+  }
+
+  document.getElementById('revenueGrid').innerHTML = `
+    <div class="ch-card"><div class="social-card-body">
+      <div class="ch-name" style="margin-bottom:2px">오늘의 심리학</div>
+      <div class="social-row">
+        <div class="social-platform"><span class="social-badge rev">$</span><span class="p-name">총수익 (${rLatest.period_start}~${rLatest.period_end})</span></div>
+        <div style="text-align:right"><div class="social-value">${fmtUsd(rLatest.total_revenue)}</div>${usdDelta(rLatest.total_revenue, rPrev ? rPrev.total_revenue : undefined)}</div>
+      </div>
+      <div class="social-row">
+        <div class="social-platform"><span class="social-badge rev">Ad</span><span class="p-name">광고 수익</span></div>
+        <div style="text-align:right"><div class="social-value">${fmtUsd(rLatest.total_ad_revenue)}</div>${usdDelta(rLatest.total_ad_revenue, rPrev ? rPrev.total_ad_revenue : undefined)}</div>
+      </div>
+      <div class="social-row">
+        <div class="social-platform"><span class="p-name">조회수(수익기간)</span></div>
+        <div style="text-align:right"><div class="social-value">${fmtNum(rLatest.total_views)}회</div></div>
+      </div>
+      <div class="social-note">확인일: ${rLatest.checked_at}</div>
+    </div></div>
+  `;
+  document.getElementById('revenueSection').hidden = false;
+}
+</script>
