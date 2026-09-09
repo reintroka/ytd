@@ -90,7 +90,10 @@ def fetch_instagram(cfg, token):
         views_list = []
         for m in recent:
             is_video = m.get("media_type") == "VIDEO" or m.get("media_product_type") == "REELS"
-            metric = "plays" if is_video else "reach"
+            # 2026-09-09: "plays"는 최신 Graph API(v26.0)에서 더 이상 유효한 값이 아님
+            # (#100 에러로 확인) - 릴스/동영상도 "views"로 통합됨. Explorer에서
+            # instagram_manage_insights 권한 추가 후 실측 확인.
+            metric = "views" if is_video else "reach"
             insights_url = (
                 f"https://{host}/v20.0/{m['id']}/insights?"
                 + urllib.parse.urlencode({"metric": metric, "access_token": token})
@@ -115,11 +118,15 @@ def fetch_facebook_pages(pages, token):
         url = f"https://graph.facebook.com/v20.0/{page_id}?fields=name,fan_count,followers_count&access_token=" + urllib.parse.quote(token)
         data = http_get(url)
         if "error" not in data:
-            # 조회수: 페이지 최근 동영상 3개의 total_video_views 평균(2026-09-09 신규
-            # - 이전엔 팔로워 수만 추적, 게시물별 인사이트를 아예 조회한 적이 없었음).
+            # 조회수: 페이지 최근 동영상 3개의 views 평균(2026-09-09 신규 - 이전엔
+            # 팔로워 수만 추적, 게시물별 조회수를 아예 조회한 적이 없었음). 처음엔
+            # video_insights?metric=total_video_views로 시도했으나, 비디오 노드
+            # 자체에 views 필드가 직접 있어 별도 insights 호출 없이 훨씬 간단하게
+            # 가져올 수 있음을 Graph API Explorer 실측으로 확인(현재 3개 페이지
+            # 모두 동영상 게시물이 없어 views_list는 계속 비어있을 수 있음 - 정상).
             videos_url = (
                 f"https://graph.facebook.com/v20.0/{page_id}/videos?"
-                + urllib.parse.urlencode({"fields": "created_time", "limit": 3, "access_token": token})
+                + urllib.parse.urlencode({"fields": "created_time,views", "limit": 3, "access_token": token})
             )
             videos = http_get(videos_url)
             if "error" in videos:
@@ -127,20 +134,7 @@ def fetch_facebook_pages(pages, token):
             recent_videos = videos.get("data", []) if "error" not in videos else []
             if "error" not in videos and not recent_videos:
                 print(f"[collect_social] FB {name}: 최근 동영상 게시물 없음(videos edge는 정상 응답)")
-            views_list = []
-            for v in recent_videos:
-                insights_url = (
-                    f"https://graph.facebook.com/v20.0/{v['id']}/video_insights?"
-                    + urllib.parse.urlencode({"metric": "total_video_views", "access_token": token})
-                )
-                insights = http_get(insights_url)
-                if "error" in insights:
-                    print(f"[collect_social] FB {name} video_insights 실패 video={v.get('id')}: {insights['error']}")
-                    continue
-                for item in insights.get("data", []):
-                    vals = item.get("values", [{}])
-                    if vals:
-                        views_list.append(vals[0].get("value", 0))
+            views_list = [v["views"] for v in recent_videos if "views" in v]
             if views_list:
                 data["recent_posts_sampled"] = len(recent_videos)
                 data["avg_views"] = round(sum(views_list) / len(views_list), 1)
