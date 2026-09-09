@@ -72,7 +72,7 @@ def fetch_instagram(cfg, token):
         return data
 
     media_url = (
-        f"https://{host}/v20.0/{obj_id}/media?fields=like_count,comments_count,timestamp&limit=3&access_token="
+        f"https://{host}/v20.0/{obj_id}/media?fields=like_count,comments_count,timestamp,media_type,media_product_type&limit=3&access_token="
         + urllib.parse.quote(token)
     )
     media = http_get(media_url)
@@ -83,6 +83,28 @@ def fetch_instagram(cfg, token):
         data["avg_comments"] = round(sum(m.get("comments_count", 0) for m in recent) / len(recent), 1)
         data["latest_post_likes"] = recent[0].get("like_count")
         data["latest_post_comments"] = recent[0].get("comments_count")
+
+        # 조회수: 릴스/동영상은 plays, 이미지/캐로셀은 reach(노출과 유사한 대체 지표)를
+        # 써서 미디어 타입 섞여도 항상 값 하나는 얻도록 함(2026-09-09, 팔로워만 추적하던
+        # collect_social.py에 조회수 추가 - Threads의 검증된 insights 패턴을 이식).
+        views_list = []
+        for m in recent:
+            is_video = m.get("media_type") == "VIDEO" or m.get("media_product_type") == "REELS"
+            metric = "plays" if is_video else "reach"
+            insights_url = (
+                f"https://{host}/v20.0/{m['id']}/insights?"
+                + urllib.parse.urlencode({"metric": metric, "access_token": token})
+            )
+            insights = http_get(insights_url)
+            if "error" in insights:
+                continue
+            for item in insights.get("data", []):
+                vals = item.get("values", [{}])
+                if vals:
+                    views_list.append(vals[0].get("value", 0))
+        if views_list:
+            data["avg_views"] = round(sum(views_list) / len(views_list), 1)
+            data["latest_post_views"] = views_list[0]
     return data
 
 
@@ -90,7 +112,34 @@ def fetch_facebook_pages(pages, token):
     result = {}
     for name, page_id in pages.items():
         url = f"https://graph.facebook.com/v20.0/{page_id}?fields=name,fan_count,followers_count&access_token=" + urllib.parse.quote(token)
-        result[name] = http_get(url)
+        data = http_get(url)
+        if "error" not in data:
+            # 조회수: 페이지 최근 동영상 3개의 total_video_views 평균(2026-09-09 신규
+            # - 이전엔 팔로워 수만 추적, 게시물별 인사이트를 아예 조회한 적이 없었음).
+            videos_url = (
+                f"https://graph.facebook.com/v20.0/{page_id}/videos?"
+                + urllib.parse.urlencode({"fields": "created_time", "limit": 3, "access_token": token})
+            )
+            videos = http_get(videos_url)
+            recent_videos = videos.get("data", []) if "error" not in videos else []
+            views_list = []
+            for v in recent_videos:
+                insights_url = (
+                    f"https://graph.facebook.com/v20.0/{v['id']}/video_insights?"
+                    + urllib.parse.urlencode({"metric": "total_video_views", "access_token": token})
+                )
+                insights = http_get(insights_url)
+                if "error" in insights:
+                    continue
+                for item in insights.get("data", []):
+                    vals = item.get("values", [{}])
+                    if vals:
+                        views_list.append(vals[0].get("value", 0))
+            if views_list:
+                data["recent_posts_sampled"] = len(recent_videos)
+                data["avg_views"] = round(sum(views_list) / len(views_list), 1)
+                data["latest_post_views"] = views_list[0]
+        result[name] = data
     return result
 
 
@@ -114,7 +163,7 @@ def collect(token_state: dict, app_id: str, app_secret: str):
         if "error" in data:
             print(f"[collect_social] 인스타그램 {name} 조회 실패: {data['error']}")
         else:
-            print(f"[collect_social] 인스타그램 {name}: 팔로워 {data.get('followers_count')}명")
+            print(f"[collect_social] 인스타그램 {name}: 팔로워 {data.get('followers_count')}명, 평균 조회수 {data.get('avg_views')}")
 
     pages = config.get("facebook_pages")
     if pages:
@@ -124,6 +173,6 @@ def collect(token_state: dict, app_id: str, app_secret: str):
             if "error" in data:
                 print(f"[collect_social] 페이스북 {name} 조회 실패: {data['error']}")
             else:
-                print(f"[collect_social] 페이스북 {name}: 팔로워 {data.get('followers_count')}명")
+                print(f"[collect_social] 페이스북 {name}: 팔로워 {data.get('followers_count')}명, 평균 조회수 {data.get('avg_views')}")
 
     return snapshot, token_state
