@@ -235,7 +235,8 @@
     gap: 8px;
   }
 
-  .social-card-body { display: flex; flex-direction: column; gap: 10px; }
+  .social-card-body { display: flex; flex-direction: column; gap: 14px; }
+  .social-entry { display: flex; flex-direction: column; gap: 6px; }
   .social-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .social-platform { display: flex; align-items: center; gap: 8px; }
   .social-badge {
@@ -249,6 +250,12 @@
   .social-platform .p-name { font-size: 12.5px; color: var(--text-secondary); }
   .social-value { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .social-note { font-size: 11px; color: var(--text-muted); }
+  .social-stats { display: flex; flex-wrap: wrap; gap: 5px 6px; }
+  .stat-chip {
+    font-size: 10.5px; color: var(--text-muted); background: var(--surface-2);
+    border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px;
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
 
   .ch-trend {
     display: flex;
@@ -568,33 +575,46 @@ function followerDelta(curr, prevVal) {
   return `<span class="subs-delta ${cls}">${arrow} ${fmtNum(Math.abs(diff))}명</span>`;
 }
 
+function statChips(chips) {
+  return chips.length ? `<div class="social-stats">${chips.map(c => `<span class="stat-chip">${c}</span>`).join('')}</div>` : '';
+}
+
 const SOCIAL_HISTORY = __SOCIAL_DATA_JSON__;
 if (SOCIAL_HISTORY.length > 0) {
   const sLatest = SOCIAL_HISTORY[SOCIAL_HISTORY.length - 1];
   const sPrev = SOCIAL_HISTORY.length >= 2 ? SOCIAL_HISTORY[SOCIAL_HISTORY.length - 2] : null;
 
   const igRows = Object.entries(sLatest.instagram || {}).map(([name, data]) => {
-    if (data.error) return `<div class="social-row"><div class="social-platform"><span class="social-badge ig">IG</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div>`;
+    if (data.error) return `<div class="social-entry"><div class="social-row"><div class="social-platform"><span class="social-badge ig">IG</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div></div>`;
     const prevData = sPrev && sPrev.instagram ? sPrev.instagram[name] : null;
-    const viewsPart = data.avg_views !== undefined ? `평균 조회수 ${fmtNum(data.avg_views)}·` : '';
-    const engagementLine = data.avg_likes !== undefined
-      ? `<div class="social-note">최근 ${data.recent_posts_sampled}개 ${viewsPart}좋아요 ${fmtNum(data.avg_likes)}·댓글 ${fmtNum(data.avg_comments)} · 게시물 ${fmtNum(data.media_count || 0)}개</div>`
-      : '';
-    return `<div class="social-row">
-      <div class="social-platform"><span class="social-badge ig">IG</span><span class="p-name">${name} (@${data.username || '-'})</span></div>
-      <div style="text-align:right"><div class="social-value">${fmtNum(data.followers_count || 0)}명</div>${followerDelta(data.followers_count, prevData ? prevData.followers_count : undefined)}${engagementLine}</div>
+    const chips = [];
+    if (data.avg_views !== undefined) chips.push(`조회수 ${fmtNum(data.avg_views)}`);
+    if (data.avg_likes !== undefined) chips.push(`좋아요 ${fmtNum(data.avg_likes)}`);
+    if (data.avg_comments !== undefined) chips.push(`댓글 ${fmtNum(data.avg_comments)}`);
+    chips.push(`게시물 ${fmtNum(data.media_count || 0)}개`);
+    return `<div class="social-entry">
+      <div class="social-row">
+        <div class="social-platform"><span class="social-badge ig">IG</span><span class="p-name">${name} (@${data.username || '-'})</span></div>
+        <div style="text-align:right"><div class="social-value">${fmtNum(data.followers_count || 0)}명</div>${followerDelta(data.followers_count, prevData ? prevData.followers_count : undefined)}</div>
+      </div>
+      ${statChips(chips)}
     </div>`;
   }).join('');
 
   const fbRows = Object.entries(sLatest.facebook_pages || {}).map(([name, data]) => {
-    if (data.error) return `<div class="social-row"><div class="social-platform"><span class="social-badge fb">FB</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div>`;
+    if (data.error) return `<div class="social-entry"><div class="social-row"><div class="social-platform"><span class="social-badge fb">FB</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div></div>`;
     const prevData = sPrev && sPrev.facebook_pages ? sPrev.facebook_pages[name] : null;
-    const engagementLine = data.avg_views !== undefined
-      ? `<div class="social-note">최근 동영상 ${data.recent_posts_sampled}개 평균 조회수 ${fmtNum(data.avg_views)}</div>`
-      : '';
-    return `<div class="social-row">
-      <div class="social-platform"><span class="social-badge fb">FB</span><span class="p-name">${name}</span></div>
-      <div style="text-align:right"><div class="social-value">${fmtNum(data.fan_count || 0)}명</div>${followerDelta(data.fan_count, prevData ? prevData.fan_count : undefined)}${engagementLine}</div>
+    const chips = [];
+    if (data.avg_views !== undefined) {
+      chips.push(`최근 동영상 ${data.recent_posts_sampled}개`);
+      chips.push(`평균 조회수 ${fmtNum(data.avg_views)}`);
+    }
+    return `<div class="social-entry">
+      <div class="social-row">
+        <div class="social-platform"><span class="social-badge fb">FB</span><span class="p-name">${name}</span></div>
+        <div style="text-align:right"><div class="social-value">${fmtNum(data.fan_count || 0)}명</div>${followerDelta(data.fan_count, prevData ? prevData.fan_count : undefined)}</div>
+      </div>
+      ${statChips(chips)}
     </div>`;
   }).join('');
 
@@ -608,14 +628,17 @@ if (THREADS_HISTORY.length > 0) {
   const tPrev = THREADS_HISTORY.length >= 2 ? THREADS_HISTORY[THREADS_HISTORY.length - 2] : null;
 
   const thRows = Object.entries(tLatest.accounts || {}).map(([name, data]) => {
-    if (data.error) return `<div class="social-row"><div class="social-platform"><span class="social-badge th">TH</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div>`;
+    if (data.error) return `<div class="social-entry"><div class="social-row"><div class="social-platform"><span class="social-badge th">TH</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div></div>`;
     const prevData = tPrev && tPrev.accounts ? tPrev.accounts[name] : null;
-    const engagementLine = data.avg_views !== undefined
-      ? `<div class="social-note">최근 ${data.recent_posts_sampled}개 평균 조회수 ${fmtNum(data.avg_views)}·좋아요 ${fmtNum(data.avg_likes || 0)}</div>`
-      : '';
-    return `<div class="social-row">
-      <div class="social-platform"><span class="social-badge th">TH</span><span class="p-name">${name}</span></div>
-      <div style="text-align:right"><div class="social-value">${fmtNum(data.followers_count || 0)}명</div>${followerDelta(data.followers_count, prevData ? prevData.followers_count : undefined)}${engagementLine}</div>
+    const chips = [];
+    if (data.avg_views !== undefined) chips.push(`조회수 ${fmtNum(data.avg_views)}`);
+    if (data.avg_likes !== undefined) chips.push(`좋아요 ${fmtNum(data.avg_likes)}`);
+    return `<div class="social-entry">
+      <div class="social-row">
+        <div class="social-platform"><span class="social-badge th">TH</span><span class="p-name">${name}</span></div>
+        <div style="text-align:right"><div class="social-value">${fmtNum(data.followers_count || 0)}명</div>${followerDelta(data.followers_count, prevData ? prevData.followers_count : undefined)}</div>
+      </div>
+      ${statChips(chips)}
     </div>`;
   }).join('');
 
