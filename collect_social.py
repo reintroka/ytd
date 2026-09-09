@@ -97,6 +97,7 @@ def fetch_instagram(cfg, token):
             )
             insights = http_get(insights_url)
             if "error" in insights:
+                print(f"[collect_social] IG insights({metric}) 실패 media={m.get('id')}: {insights['error']}")
                 continue
             for item in insights.get("data", []):
                 vals = item.get("values", [{}])
@@ -121,7 +122,11 @@ def fetch_facebook_pages(pages, token):
                 + urllib.parse.urlencode({"fields": "created_time", "limit": 3, "access_token": token})
             )
             videos = http_get(videos_url)
+            if "error" in videos:
+                print(f"[collect_social] FB {name} videos 목록 조회 실패: {videos['error']}")
             recent_videos = videos.get("data", []) if "error" not in videos else []
+            if "error" not in videos and not recent_videos:
+                print(f"[collect_social] FB {name}: 최근 동영상 게시물 없음(videos edge는 정상 응답)")
             views_list = []
             for v in recent_videos:
                 insights_url = (
@@ -130,6 +135,7 @@ def fetch_facebook_pages(pages, token):
                 )
                 insights = http_get(insights_url)
                 if "error" in insights:
+                    print(f"[collect_social] FB {name} video_insights 실패 video={v.get('id')}: {insights['error']}")
                     continue
                 for item in insights.get("data", []):
                     vals = item.get("values", [{}])
