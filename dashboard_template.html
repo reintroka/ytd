@@ -244,6 +244,7 @@
   }
   .social-badge.ig { background: linear-gradient(135deg, #d6336c, #f77737); }
   .social-badge.fb { background: #1877f2; }
+  .social-badge.th { background: #000000; }
   .social-badge.rev { background: var(--status-good); }
   .social-platform .p-name { font-size: 12.5px; color: var(--text-secondary); }
   .social-value { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
@@ -334,7 +335,7 @@
     <div class="block-head">
       <div>
         <h2>다른 매체</h2>
-        <div class="block-sub">인스타그램 팔로워 · 페이스북 페이지 팔로워</div>
+        <div class="block-sub">인스타그램 팔로워 · 페이스북 페이지 팔로워 · 스레드 팔로워/조회수</div>
       </div>
     </div>
     <div class="card-grid" id="socialGrid"></div>
@@ -536,20 +537,22 @@ const cardHtml = ranked.map((c, i) => {
 }).join('');
 document.getElementById('cardGrid').innerHTML = cardHtml;
 
-// ---- 다른 매체 (인스타그램 / 페이스북) ----
+// ---- 다른 매체 (인스타그램 / 페이스북 / 스레드) ----
+const socialCards = [];
+
+function followerDelta(curr, prevVal) {
+  if (prevVal === undefined || prevVal === null || curr === undefined) return '';
+  const diff = curr - prevVal;
+  if (diff === 0) return `<span class="subs-delta flat">— 변동 없음</span>`;
+  const cls = diff > 0 ? 'up' : 'down';
+  const arrow = diff > 0 ? '▲' : '▼';
+  return `<span class="subs-delta ${cls}">${arrow} ${fmtNum(Math.abs(diff))}명</span>`;
+}
+
 const SOCIAL_HISTORY = __SOCIAL_DATA_JSON__;
 if (SOCIAL_HISTORY.length > 0) {
   const sLatest = SOCIAL_HISTORY[SOCIAL_HISTORY.length - 1];
   const sPrev = SOCIAL_HISTORY.length >= 2 ? SOCIAL_HISTORY[SOCIAL_HISTORY.length - 2] : null;
-
-  function followerDelta(curr, prevVal) {
-    if (prevVal === undefined || prevVal === null || curr === undefined) return '';
-    const diff = curr - prevVal;
-    if (diff === 0) return `<span class="subs-delta flat">— 변동 없음</span>`;
-    const cls = diff > 0 ? 'up' : 'down';
-    const arrow = diff > 0 ? '▲' : '▼';
-    return `<span class="subs-delta ${cls}">${arrow} ${fmtNum(Math.abs(diff))}명</span>`;
-  }
 
   const igRows = Object.entries(sLatest.instagram || {}).map(([name, data]) => {
     if (data.error) return `<div class="social-row"><div class="social-platform"><span class="social-badge ig">IG</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div>`;
@@ -572,10 +575,32 @@ if (SOCIAL_HISTORY.length > 0) {
     </div>`;
   }).join('');
 
-  document.getElementById('socialGrid').innerHTML = `
-    <div class="ch-card"><div class="social-card-body"><div class="ch-name" style="margin-bottom:2px">인스타그램</div>${igRows || '<span class="social-note">데이터 없음</span>'}</div></div>
-    <div class="ch-card"><div class="social-card-body"><div class="ch-name" style="margin-bottom:2px">페이스북 페이지</div>${fbRows || '<span class="social-note">데이터 없음</span>'}</div></div>
-  `;
+  socialCards.push(`<div class="ch-card"><div class="social-card-body"><div class="ch-name" style="margin-bottom:2px">인스타그램</div>${igRows || '<span class="social-note">데이터 없음</span>'}</div></div>`);
+  socialCards.push(`<div class="ch-card"><div class="social-card-body"><div class="ch-name" style="margin-bottom:2px">페이스북 페이지</div>${fbRows || '<span class="social-note">데이터 없음</span>'}</div></div>`);
+}
+
+const THREADS_HISTORY = __THREADS_DATA_JSON__;
+if (THREADS_HISTORY.length > 0) {
+  const tLatest = THREADS_HISTORY[THREADS_HISTORY.length - 1];
+  const tPrev = THREADS_HISTORY.length >= 2 ? THREADS_HISTORY[THREADS_HISTORY.length - 2] : null;
+
+  const thRows = Object.entries(tLatest.accounts || {}).map(([name, data]) => {
+    if (data.error) return `<div class="social-row"><div class="social-platform"><span class="social-badge th">TH</span><span class="p-name">${name}</span></div><span class="social-note">조회 실패 - 토큰 갱신 필요</span></div>`;
+    const prevData = tPrev && tPrev.accounts ? tPrev.accounts[name] : null;
+    const engagementLine = data.avg_views !== undefined
+      ? `<div class="social-note">최근 ${data.recent_posts_sampled}개 평균 조회수 ${fmtNum(data.avg_views)}·좋아요 ${fmtNum(data.avg_likes || 0)}</div>`
+      : '';
+    return `<div class="social-row">
+      <div class="social-platform"><span class="social-badge th">TH</span><span class="p-name">${name}</span></div>
+      <div style="text-align:right"><div class="social-value">${fmtNum(data.followers_count || 0)}명</div>${followerDelta(data.followers_count, prevData ? prevData.followers_count : undefined)}${engagementLine}</div>
+    </div>`;
+  }).join('');
+
+  socialCards.push(`<div class="ch-card"><div class="social-card-body"><div class="ch-name" style="margin-bottom:2px">스레드</div>${thRows || '<span class="social-note">데이터 없음</span>'}</div></div>`);
+}
+
+if (socialCards.length > 0) {
+  document.getElementById('socialGrid').innerHTML = socialCards.join('');
   document.getElementById('socialSection').hidden = false;
 }
 

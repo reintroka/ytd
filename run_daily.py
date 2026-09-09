@@ -8,6 +8,9 @@
   META_APP_ID / META_APP_SECRET - 메타 토큰 자동갱신용(40일마다 fb_exchange_token),
                          없으면 자동갱신 없이 META_ACCESS_TOKEN을 계속 그대로 사용
   YT_REVENUE_OAUTH_JSON - YouTube Analytics OAuth 토큰 JSON 문자열 (없으면 수익 스킵)
+  THREADS_ACCESS_TOKEN - 스레드 조회용 장기 토큰 초기값(최초 1회 부트스트랩용,
+                         이후엔 GCS에 저장된 토큰 상태를 씀). 앱 시크릿 불필요
+                         (th_refresh_token 그랜트는 토큰 자체로만 갱신됨)
   GCS_SA_KEY_JSON      - 버킷 쓰기 권한 서비스계정 키 JSON 문자열 (필수)
   GCS_BUCKET           - 기본값 coredlab-youtube-dashboard
 """
@@ -20,6 +23,7 @@ from google.cloud import storage
 import collect_views
 import collect_social
 import collect_revenue
+import collect_threads
 import build_dashboard
 
 BUCKET_NAME = os.environ.get("GCS_BUCKET", "coredlab-youtube-dashboard")
@@ -98,7 +102,29 @@ def main():
     except Exception as exc:
         print(f"[run_daily] 수익 수집 실패: {exc}")
 
-    html = build_dashboard.build(views_history, social_history, revenue_history)
+    threads_history = load_json_blob(bucket, DATA_PREFIX + "threads_history.json", [])
+    try:
+        token_state = load_json_blob(bucket, DATA_PREFIX + "threads_token_state.json", None)
+        if token_state is None:
+            bootstrap_token = os.environ.get("THREADS_ACCESS_TOKEN")
+            if bootstrap_token:
+                token_state = {
+                    "access_token": bootstrap_token,
+                    "obtained_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+        if token_state:
+            snap, token_state = collect_threads.collect(token_state)
+            threads_history.append(snap)
+            save_json_blob(bucket, DATA_PREFIX + "threads_history.json", threads_history)
+            save_json_blob(bucket, DATA_PREFIX + "threads_token_state.json", token_state)
+            print(f"[run_daily] threads 스냅샷 저장 완료 (총 {len(threads_history)}개)")
+        else:
+            print("[run_daily] THREADS_ACCESS_TOKEN 미설정 - 스레드 수집 스킵")
+    except Exception as exc:
+        print(f"[run_daily] 스레드 수집 실패: {exc}")
+
+    html = build_dashboard.build(views_history, social_history, revenue_history, threads_history)
     out_blob = bucket.blob("dashboard.html")
     out_blob.upload_from_string(html, content_type="text/html; charset=utf-8")
     print(f"[run_daily] dashboard.html 업로드 완료 -> gs://{BUCKET_NAME}/dashboard.html")

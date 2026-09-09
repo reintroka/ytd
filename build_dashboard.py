@@ -13,17 +13,19 @@ PAGE_HEAD = (
 HEAD_BODY_SPLIT = '<div class="wrap">'
 
 
-def build(views_history: list, social_history: list, revenue_history: list) -> str:
+def build(views_history: list, social_history: list, revenue_history: list, threads_history: list = None) -> str:
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
 
     data_json = json.dumps(views_history, ensure_ascii=False)
     social_json = json.dumps(social_history, ensure_ascii=False)
     revenue_json = json.dumps(revenue_history, ensure_ascii=False)
+    threads_json = json.dumps(threads_history or [], ensure_ascii=False)
     filled = (
         template
         .replace("__DATA_JSON__", data_json)
         .replace("__SOCIAL_DATA_JSON__", social_json)
         .replace("__REVENUE_DATA_JSON__", revenue_json)
+        .replace("__THREADS_DATA_JSON__", threads_json)
     )
 
     head_part, body_part = filled.split(HEAD_BODY_SPLIT, 1)
