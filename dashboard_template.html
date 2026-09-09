@@ -257,6 +257,15 @@
     padding-top: 2px;
   }
   .ch-trend svg { flex: none; display: block; }
+  .trend-tag {
+    flex: none;
+    font-size: 10px;
+    font-weight: 700;
+    width: 16px;
+    text-align: center;
+  }
+  .trend-tag.is-short { color: var(--series-shorts); }
+  .trend-tag.is-long { color: var(--series-longform); }
   .ch-trend .delta {
     font-size: 12px;
     font-weight: 700;
@@ -389,12 +398,14 @@ const channels = channelsOf(LATEST);
 const prevByName = {};
 if (PREV) channelsOf(PREV).forEach(c => { prevByName[c.name] = c; });
 
-// 채널별 shortAvg 시계열(스파크라인용) - 이번 채널이 등장하는 스냅샷만 모음
+// 채널별 shortAvg/longAvg 시계열(스파크라인용) - 이번 채널이 등장하는 스냅샷만 모음
 const seriesByName = {};
-channels.forEach(c => { seriesByName[c.name] = []; });
+const longSeriesByName = {};
+channels.forEach(c => { seriesByName[c.name] = []; longSeriesByName[c.name] = []; });
 HISTORY.forEach(snap => {
   channelsOf(snap).forEach(c => {
     if (seriesByName[c.name]) seriesByName[c.name].push(c.shortAvg);
+    if (longSeriesByName[c.name]) longSeriesByName[c.name].push(c.longAvg);
   });
 });
 
@@ -448,12 +459,14 @@ document.getElementById('rankChart').innerHTML = rankHtml +
   `<div class="rank-axis"><div></div><div class="rank-axis-ticks">${ticksHtml}</div><div></div></div>`;
 
 // ---- sparkline (SVG polyline, area fill, emphasized endpoint) ----
-function sparkline(values) {
+function sparkline(values, colorVar, bgVar) {
+  colorVar = colorVar || 'var(--series-shorts)';
+  bgVar = bgVar || 'var(--series-shorts-bg)';
   const w = 64, h = 24, pad = 2;
   if (values.length < 2) {
     // 점 하나뿐 - 향후 스냅샷이 쌓이면 자동으로 선이 됨
     return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-      <circle cx="${w/2}" cy="${h/2}" r="3" fill="var(--series-shorts)"></circle>
+      <circle cx="${w/2}" cy="${h/2}" r="3" fill="${colorVar}"></circle>
     </svg>`;
   }
   const max = Math.max(...values, 1);
@@ -469,9 +482,9 @@ function sparkline(values) {
   const areaPath = `M${pts[0][0]},${h} ` + pts.map(p => `L${p[0]},${p[1]}`).join(' ') + ` L${pts[pts.length-1][0]},${h} Z`;
   const last = pts[pts.length - 1];
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-    <path d="${areaPath}" fill="var(--series-shorts-bg)"></path>
-    <polyline points="${line}" fill="none" stroke="var(--series-shorts)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></polyline>
-    <circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="var(--series-shorts)"></circle>
+    <path d="${areaPath}" fill="${bgVar}"></path>
+    <polyline points="${line}" fill="none" stroke="${colorVar}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"></polyline>
+    <circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="${colorVar}"></circle>
   </svg>`;
 }
 
@@ -526,8 +539,14 @@ const cardHtml = ranked.map((c, i) => {
       </div>
     </div>
     <div class="ch-trend">
-      ${sparkline(seriesByName[c.name])}
+      <span class="trend-tag is-short">숏</span>
+      ${sparkline(seriesByName[c.name], 'var(--series-shorts)', 'var(--series-shorts-bg)')}
       ${deltaBadge(c.shortAvg, prevC ? prevC.shortAvg : undefined)}
+    </div>
+    <div class="ch-trend">
+      <span class="trend-tag is-long">롱</span>
+      ${sparkline(longSeriesByName[c.name], 'var(--series-longform)', 'var(--series-longform-bg)')}
+      ${deltaBadge(c.longAvg, prevC ? prevC.longAvg : undefined)}
     </div>
     <div class="ch-footline">
       <span>최신: ${latestShort ? new Date(latestShort.published_at).toLocaleDateString('ko-KR', {timeZone:'Asia/Seoul', month:'numeric', day:'numeric'}) : '-'}</span>
