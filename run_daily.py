@@ -8,9 +8,12 @@
   META_APP_ID / META_APP_SECRET - 메타 토큰 자동갱신용(40일마다 fb_exchange_token),
                          없으면 자동갱신 없이 META_ACCESS_TOKEN을 계속 그대로 사용
   YT_REVENUE_OAUTH_JSON - YouTube Analytics OAuth 토큰 JSON 문자열 (없으면 수익 스킵)
-  THREADS_ACCESS_TOKEN - 스레드 조회용 장기 토큰 초기값(최초 1회 부트스트랩용,
-                         이후엔 GCS에 저장된 토큰 상태를 씀). 앱 시크릿 불필요
-                         (th_refresh_token 그랜트는 토큰 자체로만 갱신됨)
+  THREADS_ACCESS_TOKEN 등 - 스레드 조회용 장기 토큰 초기값(계정별로 서로 다른
+                         환경변수, config_threads.json의 token_env 참고 —
+                         명리마스터는 THREADS_ACCESS_TOKEN, 쇼핑의 천국은
+                         THREADS_ACCESS_TOKEN_SP). 각각 최초 1회만 부트스트랩용,
+                         이후엔 GCS에 계정별로 저장된 토큰 상태를 씀. 앱 시크릿
+                         불필요(th_refresh_token 그랜트는 토큰 자체로만 갱신됨)
   GCS_SA_KEY_JSON      - 버킷 쓰기 권한 서비스계정 키 JSON 문자열 (필수)
   GCS_BUCKET           - 기본값 coredlab-youtube-dashboard
 """
@@ -102,25 +105,15 @@ def main():
     except Exception as exc:
         print(f"[run_daily] 수익 수집 실패: {exc}")
 
+    # 2026-09-20: 계정마다 별도 Threads 토큰이라(명리마스터/쇼핑의 천국 등) 토큰
+    # 상태 로드/갱신/저장을 계정 단위로 collect_threads.collect() 내부에서 처리한다
+    # (config_threads.json 참고) — 여기서는 더 이상 단일 토큰을 부트스트랩하지 않는다.
     threads_history = load_json_blob(bucket, DATA_PREFIX + "threads_history.json", [])
     try:
-        token_state = load_json_blob(bucket, DATA_PREFIX + "threads_token_state.json", None)
-        if token_state is None:
-            bootstrap_token = os.environ.get("THREADS_ACCESS_TOKEN")
-            if bootstrap_token:
-                token_state = {
-                    "access_token": bootstrap_token,
-                    "obtained_at": datetime.now(timezone.utc).isoformat(),
-                }
-
-        if token_state:
-            snap, token_state = collect_threads.collect(token_state)
-            threads_history.append(snap)
-            save_json_blob(bucket, DATA_PREFIX + "threads_history.json", threads_history)
-            save_json_blob(bucket, DATA_PREFIX + "threads_token_state.json", token_state)
-            print(f"[run_daily] threads 스냅샷 저장 완료 (총 {len(threads_history)}개)")
-        else:
-            print("[run_daily] THREADS_ACCESS_TOKEN 미설정 - 스레드 수집 스킵")
+        snap = collect_threads.collect(bucket, load_json_blob, save_json_blob)
+        threads_history.append(snap)
+        save_json_blob(bucket, DATA_PREFIX + "threads_history.json", threads_history)
+        print(f"[run_daily] threads 스냅샷 저장 완료 (총 {len(threads_history)}개)")
     except Exception as exc:
         print(f"[run_daily] 스레드 수집 실패: {exc}")
 

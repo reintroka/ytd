@@ -1,5 +1,6 @@
 {
   "accounts": {
-    "명리마스터": "28071399885816904"
+    "명리마스터": {"user_id": "28071399885816904", "token_env": "THREADS_ACCESS_TOKEN"},
+    "쇼핑의 천국": {"user_id": "28578029598497503", "token_env": "THREADS_ACCESS_TOKEN_SP", "slug": "sp"}
   }
 }

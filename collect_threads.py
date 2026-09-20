@@ -3,8 +3,17 @@
 토큰 자동갱신: Threads 장기 토큰은 60일 유효, th_refresh_token 그랜트로
 자체 재발급 가능(앱 시크릿 불필요 - 지금 토큰만 있으면 됨). state(현재
 토큰+발급일)를 GCS에 저장해두고 50일 이상 지나면 자동 재발급한다.
+
+2026-09-20: 계정별로 서로 다른 Threads 앱/토큰이라(인스타/페북과 달리 Threads는
+하나의 비즈니스 토큰이 여러 계정을 커버하는 시스템 유저 개념이 없음) 토큰
+상태를 계정 하나로 공유하면 안 된다 — config_threads.json의 계정마다
+token_env(부트스트랩용 클라우드 환경변수 이름)와 slug(GCS 상태 파일 구분자)를
+따로 갖고, collect()가 계정별로 로드/갱신/저장한다. 기존 계정(명리마스터)은
+slug를 안 줘서 이전과 동일한 파일 경로(data/threads_token_state.json)를 그대로
+쓰도록 해 마이그레이션 없이 호환된다.
 """
 import json
+import os
 import urllib.request
 import urllib.parse
 from datetime import datetime, timezone
@@ -99,18 +108,36 @@ def fetch_account(user_id: str, token: str) -> dict:
     return result
 
 
-def collect(token_state: dict):
-    """token_state: {"access_token": ..., "obtained_at": ...}.
-    반환: (snapshot, 갱신된 token_state)"""
-    token_state = maybe_refresh_token(token_state)
-    token = token_state["access_token"]
-
+def collect(bucket, load_json_blob, save_json_blob) -> dict:
+    """계정마다 별도의 Threads 토큰 상태를 GCS에서 로드/갱신/저장한다.
+    load_json_blob/save_json_blob은 run_daily.py의 (bucket, path, default/data)
+    시그니처와 동일한 함수를 그대로 받는다(호출 스타일 통일)."""
     config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
     snapshot = {"timestamp": datetime.now(timezone.utc).isoformat(), "accounts": {}}
 
-    for name, user_id in config.get("accounts", {}).items():
-        data = fetch_account(user_id, token)
+    for name, acc in config.get("accounts", {}).items():
+        user_id = acc["user_id"]
+        token_env = acc.get("token_env", "THREADS_ACCESS_TOKEN")
+        slug = acc.get("slug")
+        state_path = f"data/threads_token_state_{slug}.json" if slug else "data/threads_token_state.json"
+
+        token_state = load_json_blob(bucket, state_path, None)
+        if token_state is None:
+            bootstrap_token = os.environ.get(token_env)
+            if not bootstrap_token:
+                snapshot["accounts"][name] = {"error": f"{token_env} 환경변수 미설정"}
+                print(f"[collect_threads] {name}: {token_env} 미설정 - 스킵")
+                continue
+            token_state = {
+                "access_token": bootstrap_token,
+                "obtained_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+        token_state = maybe_refresh_token(token_state)
+        data = fetch_account(user_id, token_state["access_token"])
         snapshot["accounts"][name] = data
+        save_json_blob(bucket, state_path, token_state)
+
         if "error" in data:
             print(f"[collect_threads] {name} 조회 실패: {data['error']}")
         else:
@@ -119,4 +146,4 @@ def collect(token_state: dict):
                 f"최근 게시물 평균 조회수 {data.get('avg_views')}"
             )
 
-    return snapshot, token_state
+    return snapshot
