@@ -54,6 +54,31 @@ def save_json_blob(bucket, path, data):
     )
 
 
+def _entry_date(entry, date_key):
+    val = entry.get(date_key)
+    if not val:
+        return None
+    try:
+        return datetime.fromisoformat(val).date()
+    except ValueError:
+        return None
+
+
+def append_or_replace_today(history, snap, date_key):
+    """오늘 날짜(UTC) 스냅샷이 이미 있으면 덮어쓰고, 없으면 새로 추가한다.
+
+    같은 날 재실행(예: revenue OAuth 재인증 후 재시도)해도 history가
+    중복으로 쌓이지 않도록 한다 (2026-09-23: 하루 3번 재실행되며
+    views/social 스냅샷이 3개씩 중복 저장된 사고 이후 추가).
+    """
+    today = datetime.now(timezone.utc).date()
+    if history and _entry_date(history[-1], date_key) == today:
+        history[-1] = snap
+        return "replaced"
+    history.append(snap)
+    return "appended"
+
+
 def main():
     bucket = get_bucket()
 
@@ -64,9 +89,9 @@ def main():
     try:
         api_key = os.environ["YOUTUBE_API_KEY"]
         snap = collect_views.collect(api_key)
-        views_history.append(snap)
+        action = append_or_replace_today(views_history, snap, "timestamp")
         save_json_blob(bucket, DATA_PREFIX + "views_history.json", views_history)
-        print(f"[run_daily] views 스냅샷 저장 완료 (총 {len(views_history)}개)")
+        print(f"[run_daily] views 스냅샷 {action} (총 {len(views_history)}개)")
     except Exception as exc:
         print(f"[run_daily] 조회수 수집 실패: {exc}")
 
@@ -84,10 +109,10 @@ def main():
             app_id = os.environ.get("META_APP_ID", "")
             app_secret = os.environ.get("META_APP_SECRET", "")
             snap, token_state = collect_social.collect(token_state, app_id, app_secret)
-            social_history.append(snap)
+            action = append_or_replace_today(social_history, snap, "timestamp")
             save_json_blob(bucket, DATA_PREFIX + "social_history.json", social_history)
             save_json_blob(bucket, DATA_PREFIX + "meta_token_state.json", token_state)
-            print(f"[run_daily] social 스냅샷 저장 완료 (총 {len(social_history)}개)")
+            print(f"[run_daily] social 스냅샷 {action} (총 {len(social_history)}개)")
         else:
             print("[run_daily] META_ACCESS_TOKEN 미설정 - 소셜 수집 스킵")
     except Exception as exc:
@@ -97,9 +122,9 @@ def main():
         oauth_json = os.environ.get("YT_REVENUE_OAUTH_JSON")
         if oauth_json:
             snap = collect_revenue.collect(json.loads(oauth_json))
-            revenue_history.append(snap)
+            action = append_or_replace_today(revenue_history, snap, "checked_at")
             save_json_blob(bucket, DATA_PREFIX + "revenue_history.json", revenue_history)
-            print(f"[run_daily] revenue 스냅샷 저장 완료 (총 {len(revenue_history)}개)")
+            print(f"[run_daily] revenue 스냅샷 {action} (총 {len(revenue_history)}개)")
         else:
             print("[run_daily] YT_REVENUE_OAUTH_JSON 미설정 - 수익 수집 스킵")
     except Exception as exc:
@@ -111,9 +136,9 @@ def main():
     threads_history = load_json_blob(bucket, DATA_PREFIX + "threads_history.json", [])
     try:
         snap = collect_threads.collect(bucket, load_json_blob, save_json_blob)
-        threads_history.append(snap)
+        action = append_or_replace_today(threads_history, snap, "timestamp")
         save_json_blob(bucket, DATA_PREFIX + "threads_history.json", threads_history)
-        print(f"[run_daily] threads 스냅샷 저장 완료 (총 {len(threads_history)}개)")
+        print(f"[run_daily] threads 스냅샷 {action} (총 {len(threads_history)}개)")
     except Exception as exc:
         print(f"[run_daily] 스레드 수집 실패: {exc}")
 
