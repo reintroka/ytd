@@ -20,6 +20,7 @@
 import json
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 
 from google.cloud import storage
 
@@ -147,6 +148,11 @@ def main():
     out_blob.upload_from_string(html, content_type="text/html; charset=utf-8")
     print(f"[run_daily] dashboard.html 업로드 완료 -> gs://{BUCKET_NAME}/dashboard.html")
     print(f"[run_daily] 열람 URL: https://storage.cloud.google.com/{BUCKET_NAME}/dashboard.html")
+    # 2026-10-04: claude.ai 아티팩트("채널 플릿 대시보드")는 9/20에 한 번 올린 정적 사본이라 멈춰 있었다.
+    # 루틴 세션이 이 파일을 아티팩트로 다시 게시할 수 있게 로컬에도 남긴다(커밋하지 않음, .gitignore).
+    local = Path(__file__).resolve().parent / "dashboard_out.html"
+    local.write_text(html, encoding="utf-8")
+    print(f"[run_daily] 로컬 사본 저장 -> {local} ({len(html):,}자)")
 
 
 if __name__ == "__main__":
